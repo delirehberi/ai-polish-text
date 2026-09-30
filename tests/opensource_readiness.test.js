@@ -28,12 +28,11 @@ test('Open Source Readiness: Required open-source and marketplace documentation 
   }
 });
 
-test('Open Source Readiness: Version 0.0.1 is synchronized across manifest and package.json', () => {
+test('Open Source Readiness: Version is synchronized across manifest and package.json', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(rootDir, 'manifest.json'), 'utf8'));
   const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
 
-  assert.equal(manifest.version, '0.0.1', 'manifest.json version must be 0.0.1');
-  assert.equal(pkg.version, '0.0.1', 'package.json version must be 0.0.1');
+  assert.equal(manifest.version, pkg.version, 'manifest.json and package.json versions must match');
   assert.equal(pkg.license, 'MIT', 'package.json license must be MIT');
 });
 
@@ -44,6 +43,7 @@ test('Open Source Readiness: Zero hardcoded secrets / API keys in repository sou
     'options/options.js',
     'popup/popup.js',
     'scripts/build_dist.js',
+    'scripts/bump_version.js',
   ];
 
   // Pattern matching live API keys (OpenAI sk-..., Anthropic sk-ant-...)
@@ -82,5 +82,24 @@ test('Open Source Readiness: Demo screenshot files exist for GitHub showcase', (
   for (const img of screenshots) {
     const imgPath = path.join(rootDir, img);
     assert.ok(fs.existsSync(imgPath), `Screenshot ${img} must exist`);
+  }
+});
+
+test('Open Source Readiness: Zero innerHTML assignments across extension source files', () => {
+  const extensionFiles = [
+    'background.js',
+    'content.js',
+    'options/options.js',
+    'popup/popup.js',
+  ];
+
+  for (const file of extensionFiles) {
+    const filePath = path.join(rootDir, file);
+    const content = fs.readFileSync(filePath, 'utf8');
+    assert.equal(
+      content.includes('.innerHTML'),
+      false,
+      `File ${file} contains unsafe .innerHTML assignment!`
+    );
   }
 });

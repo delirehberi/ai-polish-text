@@ -60,18 +60,6 @@
   }
 
   /**
-   * Escape HTML helper
-   */
-  function escapeHtml(str) {
-    return (str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  /**
    * Detect if a DOM node or element is part of an editable container
    */
   function isNodeEditable(node) {
@@ -315,7 +303,6 @@
 
       let success = false;
       try {
-        // execCommand('insertText') automatically triggers native beforeinput and input events in one pass
         success = document.execCommand('insertText', false, newText);
       } catch {}
 
@@ -367,7 +354,7 @@
   }
 
   /**
-   * Render Floating UI Card
+   * Pure safe DOM-based Card Builder (Zero innerHTML for strict AMO/CWS compliance)
    */
   function renderCard({
     toneId = 'professional',
@@ -382,7 +369,7 @@
     const shadow = activeShadowRoot;
     if (!shadow || typeof document === 'undefined') return;
 
-    // Clean previous card markup but preserve <link> stylesheet
+    // Clean previous card markup safely
     const existingCard = shadow.querySelector('.polisher-card');
     if (existingCard) {
       existingCard.remove();
@@ -391,172 +378,278 @@
     const card = document.createElement('div');
     card.className = 'polisher-card';
 
-    // Header
+    // 1. Header
     const header = document.createElement('div');
     header.className = 'polisher-header';
-    header.innerHTML = `
-      <div class="polisher-title">
-        <span class="polisher-icon">✨</span>
-        <span>LLM Text Polisher</span>
-        <span class="tone-pill">${escapeHtml(toneLabel)}</span>
-      </div>
-      <div class="header-controls">
-        <button class="btn-close" title="Close (Esc)">✕</button>
-      </div>
-    `;
+
+    const titleWrapper = document.createElement('div');
+    titleWrapper.className = 'polisher-title';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'polisher-icon';
+    iconSpan.textContent = '✨';
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = 'LLM Text Polisher';
+
+    const tonePill = document.createElement('span');
+    tonePill.className = 'tone-pill';
+    tonePill.textContent = toneLabel;
+
+    titleWrapper.append(iconSpan, textSpan, tonePill);
+
+    const controlsWrapper = document.createElement('div');
+    controlsWrapper.className = 'header-controls';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-close';
+    closeBtn.title = 'Close (Esc)';
+    closeBtn.textContent = '✕';
+
+    controlsWrapper.appendChild(closeBtn);
+    header.append(titleWrapper, controlsWrapper);
     card.appendChild(header);
 
-    // Body container
+    // 2. Body container
     const body = document.createElement('div');
     body.className = 'polisher-body';
 
     if (state === 'loading') {
-      body.innerHTML = `
-        <div class="loading-view">
-          <div class="loading-status">
-            <div class="spinner"></div>
-            <span>Polishing text with AI...</span>
-          </div>
-          <div class="skeleton-line w-95"></div>
-          <div class="skeleton-line w-80"></div>
-          <div class="skeleton-line w-60"></div>
-        </div>
-      `;
+      const loadingView = document.createElement('div');
+      loadingView.className = 'loading-view';
+
+      const statusRow = document.createElement('div');
+      statusRow.className = 'loading-status';
+
+      const spinner = document.createElement('div');
+      spinner.className = 'spinner';
+
+      const statusText = document.createElement('span');
+      statusText.textContent = 'Polishing text with AI...';
+
+      statusRow.append(spinner, statusText);
+
+      const line1 = document.createElement('div');
+      line1.className = 'skeleton-line w-95';
+
+      const line2 = document.createElement('div');
+      line2.className = 'skeleton-line w-80';
+
+      const line3 = document.createElement('div');
+      line3.className = 'skeleton-line w-60';
+
+      loadingView.append(statusRow, line1, line2, line3);
+      body.appendChild(loadingView);
     } else if (state === 'custom_input') {
-      body.innerHTML = `
-        <div class="custom-prompt-container">
-          <label class="input-label" for="custom-instruction">Enter your custom polishing instruction:</label>
-          <textarea
-            id="custom-instruction"
-            class="prompt-textarea"
-            placeholder="e.g. Make it more punchy, translate into formal French, shorten to 1 tweet..."
-            autofocus
-          ></textarea>
-        </div>
-      `;
+      const customContainer = document.createElement('div');
+      customContainer.className = 'custom-prompt-container';
+
+      const label = document.createElement('label');
+      label.className = 'input-label';
+      label.htmlFor = 'custom-instruction';
+      label.textContent = 'Enter your custom polishing instruction:';
+
+      const textarea = document.createElement('textarea');
+      textarea.id = 'custom-instruction';
+      textarea.className = 'prompt-textarea';
+      textarea.placeholder = 'e.g. Make it more punchy, translate into formal French, shorten to 1 tweet...';
+      textarea.autofocus = true;
+
+      customContainer.append(label, textarea);
+      body.appendChild(customContainer);
     } else if (state === 'result') {
-      let contentHtml = '';
+      const tabsRow = document.createElement('div');
+      tabsRow.className = 'view-tabs';
+
+      const tabDiff = document.createElement('button');
+      tabDiff.className = `tab-btn ${viewMode === 'diff' ? 'active' : ''}`;
+      tabDiff.dataset.mode = 'diff';
+      tabDiff.textContent = 'Diff View';
+
+      const tabSide = document.createElement('button');
+      tabSide.className = `tab-btn ${viewMode === 'side' ? 'active' : ''}`;
+      tabSide.dataset.mode = 'side';
+      tabSide.textContent = 'Side-by-Side';
+
+      const tabPolished = document.createElement('button');
+      tabPolished.className = `tab-btn ${viewMode === 'polished' ? 'active' : ''}`;
+      tabPolished.dataset.mode = 'polished';
+      tabPolished.textContent = 'Polished Text';
+
+      tabsRow.append(tabDiff, tabSide, tabPolished);
+      body.appendChild(tabsRow);
 
       if (viewMode === 'diff') {
+        const resultBox = document.createElement('div');
+        resultBox.className = 'result-box';
+
         const diffSegments = computeWordDiff(originalText, polishedText);
-        const diffHtml = diffSegments
-          .map((seg) => {
-            if (seg.type === 'insert') {
-              return `<ins class="diff-ins">${escapeHtml(seg.text)}</ins>`;
-            }
-            if (seg.type === 'delete') {
-              return `<del class="diff-del">${escapeHtml(seg.text)}</del>`;
-            }
-            return escapeHtml(seg.text);
-          })
-          .join('');
+        diffSegments.forEach((seg) => {
+          if (seg.type === 'insert') {
+            const ins = document.createElement('ins');
+            ins.className = 'diff-ins';
+            ins.textContent = seg.text;
+            resultBox.appendChild(ins);
+          } else if (seg.type === 'delete') {
+            const del = document.createElement('del');
+            del.className = 'diff-del';
+            del.textContent = seg.text;
+            resultBox.appendChild(del);
+          } else {
+            resultBox.appendChild(document.createTextNode(seg.text));
+          }
+        });
 
-        contentHtml = `<div class="result-box">${diffHtml}</div>`;
+        body.appendChild(resultBox);
       } else if (viewMode === 'side') {
-        contentHtml = `
-          <div class="side-by-side-grid">
-            <div>
-              <div class="side-col-header">Original</div>
-              <div class="side-box">${escapeHtml(originalText)}</div>
-            </div>
-            <div>
-              <div class="side-col-header">Polished</div>
-              <div class="side-box">${escapeHtml(polishedText)}</div>
-            </div>
-          </div>
-        `;
+        const grid = document.createElement('div');
+        grid.className = 'side-by-side-grid';
+
+        const col1 = document.createElement('div');
+        const header1 = document.createElement('div');
+        header1.className = 'side-col-header';
+        header1.textContent = 'Original';
+        const box1 = document.createElement('div');
+        box1.className = 'side-box';
+        box1.textContent = originalText;
+        col1.append(header1, box1);
+
+        const col2 = document.createElement('div');
+        const header2 = document.createElement('div');
+        header2.className = 'side-col-header';
+        header2.textContent = 'Polished';
+        const box2 = document.createElement('div');
+        box2.className = 'side-box';
+        box2.textContent = polishedText;
+        col2.append(header2, box2);
+
+        grid.append(col1, col2);
+        body.appendChild(grid);
       } else {
-        contentHtml = `<div class="result-box">${escapeHtml(polishedText)}</div>`;
+        const resultBox = document.createElement('div');
+        resultBox.className = 'result-box';
+        resultBox.textContent = polishedText;
+        body.appendChild(resultBox);
       }
 
-      body.innerHTML = `
-        <div class="view-tabs">
-          <button class="tab-btn ${viewMode === 'diff' ? 'active' : ''}" data-mode="diff">Diff View</button>
-          <button class="tab-btn ${viewMode === 'side' ? 'active' : ''}" data-mode="side">Side-by-Side</button>
-          <button class="tab-btn ${viewMode === 'polished' ? 'active' : ''}" data-mode="polished">Polished Text</button>
-        </div>
-        ${contentHtml}
-        <div class="tweak-section">
-          <input type="text" class="tweak-input" placeholder="Refine further (e.g. make it shorter, warmer)..." />
-          <button class="btn btn-secondary btn-sm btn-tweak-submit">Tweak</button>
-        </div>
-      `;
+      // Tweak section
+      const tweakSection = document.createElement('div');
+      tweakSection.className = 'tweak-section';
+
+      const tweakInput = document.createElement('input');
+      tweakInput.type = 'text';
+      tweakInput.className = 'tweak-input';
+      tweakInput.placeholder = 'Refine further (e.g. make it shorter, warmer)...';
+
+      const tweakSubmit = document.createElement('button');
+      tweakSubmit.className = 'btn btn-secondary btn-sm btn-tweak-submit';
+      tweakSubmit.textContent = 'Tweak';
+
+      tweakSection.append(tweakInput, tweakSubmit);
+      body.appendChild(tweakSection);
     } else if (state === 'error') {
+      const errorBox = document.createElement('div');
+      errorBox.className = 'error-box';
+
+      const errorTitle = document.createElement('div');
+      errorTitle.className = 'error-title';
+
+      const errorIcon = document.createElement('span');
+      errorIcon.textContent = isDisconnected ? '🔄' : '⚠️';
+
+      const errorHeading = document.createElement('span');
+      errorHeading.textContent = isDisconnected ? 'Extension Reconnection Required' : 'Polishing Request Failed';
+
+      errorTitle.append(errorIcon, errorHeading);
+
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'error-message';
+      errorMsg.textContent = isDisconnected
+        ? 'The extension was updated or reloaded in the background. Please refresh this webpage to reconnect.'
+        : errorMessage;
+
+      const errorActions = document.createElement('div');
+      errorActions.className = 'error-actions';
+
       if (isDisconnected) {
-        body.innerHTML = `
-          <div class="error-box">
-            <div class="error-title">
-              <span>🔄</span>
-              <span>Extension Reconnection Required</span>
-            </div>
-            <div class="error-message">
-              The extension was updated or reloaded in the background. Please refresh this webpage to reconnect.
-            </div>
-            <div class="error-actions">
-              <button class="btn btn-primary btn-sm btn-refresh-page">🔄 Refresh Webpage</button>
-            </div>
-          </div>
-        `;
+        const refreshBtn = document.createElement('button');
+        refreshBtn.className = 'btn btn-primary btn-sm btn-refresh-page';
+        refreshBtn.textContent = '🔄 Refresh Webpage';
+        errorActions.appendChild(refreshBtn);
       } else {
-        body.innerHTML = `
-          <div class="error-box">
-            <div class="error-title">
-              <span>⚠️</span>
-              <span>Polishing Request Failed</span>
-            </div>
-            <div class="error-message">${escapeHtml(errorMessage)}</div>
-            <div class="error-actions">
-              <button class="btn btn-secondary btn-sm btn-open-settings">Open Settings</button>
-              <button class="btn btn-primary btn-sm btn-retry">Retry</button>
-            </div>
-          </div>
-        `;
+        const openSettingsBtn = document.createElement('button');
+        openSettingsBtn.className = 'btn btn-secondary btn-sm btn-open-settings';
+        openSettingsBtn.textContent = 'Open Settings';
+
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn btn-primary btn-sm btn-retry';
+        retryBtn.textContent = 'Retry';
+
+        errorActions.append(openSettingsBtn, retryBtn);
       }
+
+      errorBox.append(errorTitle, errorMsg, errorActions);
+      body.appendChild(errorBox);
     }
 
     card.appendChild(body);
 
-    // Footer
+    // 3. Footer
     const footer = document.createElement('div');
     footer.className = 'polisher-footer';
 
+    const footerLeft = document.createElement('div');
+    footerLeft.className = 'footer-left';
+
+    const footerRight = document.createElement('div');
+    footerRight.className = 'footer-right';
+
     if (state === 'custom_input') {
-      footer.innerHTML = `
-        <div class="footer-left"></div>
-        <div class="footer-right">
-          <button class="btn btn-secondary btn-dismiss">Cancel</button>
-          <button class="btn btn-primary btn-submit-custom">✨ Polish</button>
-        </div>
-      `;
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn btn-secondary btn-dismiss';
+      cancelBtn.textContent = 'Cancel';
+
+      const submitBtn = document.createElement('button');
+      submitBtn.className = 'btn btn-primary btn-submit-custom';
+      submitBtn.textContent = '✨ Polish';
+
+      footerRight.append(cancelBtn, submitBtn);
     } else if (state === 'result') {
       const isEditable = activeSelectionContext?.isEditable;
-      footer.innerHTML = `
-        <div class="footer-left">
-          ${!isEditable ? '<span class="badge-read-only" title="Cannot replace text on read-only pages">Read-Only</span>' : ''}
-        </div>
-        <div class="footer-right">
-          <button class="btn btn-secondary btn-copy">📋 Copy</button>
-          <button class="btn btn-primary btn-replace" ${!isEditable ? 'disabled title="Selection is not editable"' : ''}>
-            🔄 Replace
-          </button>
-        </div>
-      `;
+      if (!isEditable) {
+        const readOnlyBadge = document.createElement('span');
+        readOnlyBadge.className = 'badge-read-only';
+        readOnlyBadge.title = 'Cannot replace text on read-only pages';
+        readOnlyBadge.textContent = 'Read-Only';
+        footerLeft.appendChild(readOnlyBadge);
+      }
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn btn-secondary btn-copy';
+      copyBtn.textContent = '📋 Copy';
+
+      const replaceBtn = document.createElement('button');
+      replaceBtn.className = 'btn btn-primary btn-replace';
+      replaceBtn.textContent = '🔄 Replace';
+      if (!isEditable) {
+        replaceBtn.disabled = true;
+        replaceBtn.title = 'Selection is not editable';
+      }
+
+      footerRight.append(copyBtn, replaceBtn);
     } else if (state === 'loading') {
-      footer.innerHTML = `
-        <div class="footer-left"></div>
-        <div class="footer-right">
-          <button class="btn btn-secondary btn-dismiss">Cancel</button>
-        </div>
-      `;
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn btn-secondary btn-dismiss';
+      cancelBtn.textContent = 'Cancel';
+      footerRight.appendChild(cancelBtn);
     } else {
-      footer.innerHTML = `
-        <div class="footer-left"></div>
-        <div class="footer-right">
-          <button class="btn btn-secondary btn-dismiss">Dismiss</button>
-        </div>
-      `;
+      const dismissBtn = document.createElement('button');
+      dismissBtn.className = 'btn btn-secondary btn-dismiss';
+      dismissBtn.textContent = 'Dismiss';
+      footerRight.appendChild(dismissBtn);
     }
 
+    footer.append(footerLeft, footerRight);
     card.appendChild(footer);
     shadow.appendChild(card);
 
@@ -855,6 +948,15 @@
         sendResponse({ received: true });
       }
     });
+  }
+
+  function escapeHtml(str) {
+    return (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   // Export internal helpers for unit testing if in Node environment

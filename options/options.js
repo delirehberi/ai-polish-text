@@ -123,7 +123,7 @@ function showToast(message, type = 'success', durationMs = 4000) {
 
 function renderModelPresets(provider) {
   const config = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openai;
-  modelPresetsContainer.innerHTML = '';
+  modelPresetsContainer.replaceChildren();
   config.presets.forEach((preset) => {
     const chip = document.createElement('button');
     chip.type = 'button';
@@ -151,7 +151,7 @@ function updateProviderUI(provider, updateDefaults = false) {
 }
 
 function renderTonesTable(tones) {
-  tonesTableBody.innerHTML = '';
+  tonesTableBody.replaceChildren();
   tones.forEach((tone, index) => {
     const row = document.createElement('tr');
 
@@ -246,10 +246,18 @@ async function saveSettings() {
   }
 }
 
+function setButtonContent(btn, icon, text) {
+  btn.replaceChildren();
+  const span = document.createElement('span');
+  span.className = 'icon';
+  span.textContent = icon;
+  btn.append(span, document.createTextNode(' ' + text));
+}
+
 // Test Connection
 async function testConnection() {
   testConnectionBtn.disabled = true;
-  testConnectionBtn.innerHTML = '<span class="icon">⏳</span> Testing...';
+  setButtonContent(testConnectionBtn, '⏳', 'Testing...');
   showToast('Testing connection to LLM endpoint...', 'info', 10000);
 
   const provider = providerSelect.value;
@@ -272,7 +280,7 @@ async function testConnection() {
     showToast(`Connection test error: ${err.message}`, 'error', 8000);
   } finally {
     testConnectionBtn.disabled = false;
-    testConnectionBtn.innerHTML = '<span class="icon">⚡</span> Test Connection';
+    setButtonContent(testConnectionBtn, '⚡', 'Test Connection');
   }
 }
 

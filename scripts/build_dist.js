@@ -71,8 +71,11 @@ function buildDistribution() {
     },
     browser_specific_settings: {
       gecko: {
-        id: 'llm-text-polisher@workouse.com',
+        id: 'ai-polish-text@emre.xyz',
         strict_min_version: '109.0',
+        data_collection_permissions: {
+          required: ['none'],
+        },
       },
     },
   };

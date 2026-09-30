@@ -24,7 +24,10 @@ test('buildDistribution creates valid separate dist/chrome and dist/firefox outp
 
   // Firefox specific checks
   assert.deepEqual(firefoxManifest.background.scripts, ['background.js']);
-  assert.equal(firefoxManifest.browser_specific_settings.gecko.id, 'llm-text-polisher@workouse.com');
+  assert.equal(firefoxManifest.browser_specific_settings.gecko.id, 'ai-polish-text@emre.xyz');
+  assert.deepEqual(firefoxManifest.browser_specific_settings.gecko.data_collection_permissions, {
+    required: ['none'],
+  });
 
   // Verify critical assets in both
   ['background.js', 'content.js', 'content.css', 'popup/popup.html', 'options/options.html', 'icons/icon-128.png'].forEach((file) => {
