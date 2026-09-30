@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Text Polisher</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <div class="brand">
+        <div class="logo">✨</div>
+        <div>
+          <h1>LLM Text Polisher</h1>
+          <p class="subtitle">Instant AI text enhancer</p>
+        </div>
+      </div>
+      <button id="open-options-btn" class="icon-btn" title="Open Settings">
+        ⚙️
+      </button>
+    </header>
+
+    <section class="status-card">
+      <div class="status-row">
+        <span class="status-label">Provider</span>
+        <span id="provider-badge" class="badge">Loading...</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Model</span>
+        <span id="model-badge" class="badge-mono">-</span>
+      </div>
+      <div id="status-warning" class="status-warning hidden">
+        ⚠️ API Key not configured. <a href="#" id="setup-link">Set up now</a>
+      </div>
+    </section>
+
+    <section class="action-section">
+      <label for="popup-tone-select">Quick Polish Tone</label>
+      <div class="action-row">
+        <select id="popup-tone-select" class="popup-select">
+          <option value="professional">Professional / Business</option>
+          <option value="casual">Casual / Friendly</option>
+          <option value="concise">Concise / Shorten</option>
+          <option value="academic">Academic / Formal</option>
+          <option value="grammar">Grammar & Clarity Fix Only</option>
+          <option value="custom">Custom Prompt...</option>
+        </select>
+        <button id="polish-btn" class="btn btn-primary">
+          Polish
+        </button>
+      </div>
+    </section>
+
+    <footer class="popup-footer">
+      <div class="shortcut-hint">
+        <span>Shortcut:</span> <kbd>Alt+P</kbd>
+      </div>
+      <a href="#" id="settings-footer-link" class="footer-link">Full Settings →</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

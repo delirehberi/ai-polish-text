@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Text Polisher — AI Writing & Tone Enhancement Extension</title>
+  <meta name="description" content="Cross-browser Manifest V3 extension to polish, rephrase, tone-adjust, and fix selected text anywhere using any LLM provider." />
+  <link rel="icon" type="image/png" href="icons/icon-48.png" />
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: #111827;
+      --bg-input: #0b1120;
+      --border: #1f2937;
+      --border-focus: #6366f1;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* Navigation */
+    header.site-header {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(9, 13, 22, 0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-wrapper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .nav-links a { color: var(--text-muted); }
+    .nav-links a:hover { color: #fff; text-decoration: none; }
+
+    .btn-cta {
+      background: var(--accent-gradient);
+      color: #fff !important;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-cta:hover { opacity: 0.9; }
+
+    /* Hero */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+    }
+
+    .badge-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 26px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-hero.primary {
+      background: var(--accent-gradient);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-hero.secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    .btn-hero.secondary:hover {
+      border-color: var(--border-focus);
+    }
+
+    /* Live Interactive Sandbox */
+    .sandbox-section {
+      padding: 40px 0 80px;
+    }
+
+    .sandbox-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    }
+
+    .sandbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .sandbox-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sample-prompts {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      font-size: 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 14px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover {
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .sandbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 840px) {
+      .sandbox-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 34px; }
+    }
+
+    .input-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-wrapper label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .sandbox-textarea {
+      width: 100%;
+      height: 180px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      color: var(--text-main);
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+    }
+
+    .sandbox-textarea:focus {
+      border-color: var(--border-focus);
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .tone-select {
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      outline: none;
+      flex: 1;
+    }
+
+    .btn-polish {
+      background: var(--accent-gradient);
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      transition: opacity 0.15s;
+    }
+
+    .btn-polish:hover { opacity: 0.9; }
+
+    /* Interactive Overlay Simulation */
+    .preview-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .preview-card {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 280px;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid #334155;
+    }
+
+    .preview-title {
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-pill {
+      font-size: 11px;
+      font-weight: 500;
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+
+    .preview-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .tabs-row {
+      display: flex;
+      gap: 4px;
+      background: #0f172a;
+      padding: 3px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      width: fit-content;
+    }
+
+    .tab-item {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .tab-item.active {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    .output-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 110px;
+    }
+
+    .diff-ins {
+      background: rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      text-decoration: none;
+      padding: 1px 3px;
+      border-radius: 3px;
+    }
+
+    .diff-del {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      text-decoration: line-through;
+      padding: 1px 3px;
+      border-radius: 3px;
+      opacity: 0.8;
+    }
+
+    .preview-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border-top: 1px solid #334155;
+    }
+
+    .btn-preview {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .btn-preview.copy {
+      background: #1e293b;
+      border-color: #334155;
+      color: #f8fafc;
+    }
+
+    .btn-preview.replace {
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+
+    /* Screenshots Section */
+    .screenshots-section {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .section-title h2 {
+      font-size: 30px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+    }
+
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 880px) {
+      .screenshots-grid { grid-template-columns: 1fr; }
+    }
+
+    .screenshot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screenshot-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .screenshot-card .caption {
+      padding: 16px;
+    }
+
+    .screenshot-card .caption h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .screenshot-card .caption p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Support & Footer */
+    footer.site-footer {
+      border-top: 1px solid var(--border);
+      padding: 60px 0 40px;
+      background: #060911;
+      margin-top: 60px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid { grid-template-columns: 1fr; }
+    }
+
+    .footer-col h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .footer-col p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .footer-col ul a {
+      color: var(--text-muted);
+    }
+
+    .footer-col ul a:hover {
+      color: #fff;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="container nav-wrapper">
+      <div class="brand">
+        <div class="brand-icon">✨</div>
+        <span>LLM Text Polisher</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#demo">Live Sandbox</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#support">Support & Donate</a>
+        <a href="https://github.com/delirehberi/ai-polish-text" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/delirehberi/ai-polish-text/releases" class="btn-cta">Download v0.0.1</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="badge-hero">
+        <span>⚡ Open Source Manifest V3 Extension</span>
+      </div>
+      <h1>Polish Your Writing Anywhere<br />With Your Preferred LLMs</h1>
+      <p>
+        Select text on any webpage, right-click (or press <code>Alt+P</code>), and polish it instantly using OpenAI, Anthropic Claude, local Ollama, or custom OpenAI-compatible endpoints.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/delirehberi/ai-polish-text/releases" class="btn-hero primary">
+          <span>📦</span> Download Chrome / Firefox Extension
+        </a>
+        <a href="#demo" class="btn-hero secondary">
+          <span>🎮</span> Try Live Interactive Demo
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Sandbox Demo -->
+  <section id="demo" class="sandbox-section">
+    <div class="container">
+      <div class="sandbox-card">
+        <div class="sandbox-header">
+          <h2><span>✨</span> Interactive Sandbox Playground</h2>
+          <div class="sample-prompts">
+            <span class="chip" data-sample="casual">Try Casual Sample</span>
+            <span class="chip" data-sample="business">Try Business Sample</span>
+            <span class="chip" data-sample="grammar">Try Grammar Sample</span>
+          </div>
+        </div>
+
+        <div class="sandbox-grid">
+          <div class="input-wrapper">
+            <label for="demo-input">Your Draft Text</label>
+            <textarea id="demo-input" class="sandbox-textarea" placeholder="Type or select text to polish...">I am writing this as test so how i am doing?</textarea>
+
+            <div class="controls-row">
+              <select id="demo-tone" class="tone-select">
+                <option value="casual">Casual / Friendly</option>
+                <option value="professional">Professional / Business</option>
+                <option value="concise">Concise / Shorten</option>
+                <option value="academic">Academic / Formal</option>
+                <option value="grammar">Grammar & Clarity Fix Only</option>
+              </select>
+              <button id="demo-polish-btn" class="btn-polish">✨ Polish Text</button>
+            </div>
+          </div>
+
+          <div class="preview-wrapper">
+            <label>Floating Card Simulation (Shadow DOM)</label>
+            <div class="preview-card">
+              <div class="preview-header">
+                <div class="preview-title">
+                  <span>✨</span>
+                  <span>LLM Text Polisher</span>
+                  <span id="preview-tone-pill" class="preview-pill">Casual</span>
+                </div>
+                <span style="color: #94a3b8; font-size: 13px;">✕</span>
+              </div>
+
+              <div class="preview-body">
+                <div class="tabs-row">
+                  <button class="tab-item active" data-view="diff">Diff View</button>
+                  <button class="tab-item" data-view="side">Side-by-Side</button>
+                  <button class="tab-item" data-view="clean">Polished</button>
+                </div>
+                <div id="demo-output" class="output-box"></div>
+              </div>
+
+              <div class="preview-footer">
+                <button id="demo-copy-btn" class="btn-preview copy">📋 Copy</button>
+                <button id="demo-replace-btn" class="btn-preview replace">🔄 Replace in Document</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Gallery -->
+  <section id="screenshots" class="screenshots-section">
+    <div class="container">
+      <div class="section-title">
+        <h2>Visual Feature Showcase</h2>
+        <p>Real in-browser experience across rich-text composers and web articles.</p>
+      </div>
+
+      <div class="screenshots-grid">
+        <div class="screenshot-card">
+          <img src="diff-view-demo.png" alt="Inline Word-Level Diff View" />
+          <div class="caption">
+            <h3>1. Inline Diff View</h3>
+            <p>Word-level deletion and addition highlights make edits crystal clear.</p>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="side-by-side-demo.png" alt="Side-by-Side Comparison" />
+          <div class="caption">
+            <h3>2. Side-by-Side Comparison</h3>
+            <p>Compare original draft vs. polished version in parallel columns.</p>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <img src="polished-text-demo.png" alt="Clean Polished View & Tweaking" />
+          <div class="caption">
+            <h3>3. In-Place Iterative Tweaking</h3>
+            <p>Refine tone dynamically with follow-up instructions without starting over.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Support & Donate Section -->
+  <footer id="support" class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>About LLM Text Polisher</h4>
+          <p>
+            An open-source, private, cross-browser Manifest V3 extension created by <strong>Emre Yılmaz (@delirehberi)</strong>.
+          </p>
+          <p>
+            Zero tracking, client-side only, and connects directly to your chosen LLM endpoint.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Support & Donate ⚡</h4>
+          <p><strong>Bitcoin / Lightning (LNURL):</strong><br /><code style="color: #a5b4fc;">delirehberi@emre.xyz</code></p>
+          <p><strong>Website:</strong> <a href="https://emre.xyz" target="_blank" rel="noopener noreferrer">emre.xyz</a></p>
+          <p><strong>Nostr:</strong> <a href="https://nostr.emre.xyz" target="_blank" rel="noopener noreferrer">nostr.emre.xyz</a></p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Links</h4>
+          <ul>
+            <li><a href="https://github.com/delirehberi/ai-polish-text" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+            <li><a href="https://github.com/delirehberi/ai-polish-text/releases" target="_blank" rel="noopener noreferrer">Releases & Downloads</a></li>
+            <li><a href="https://github.com/delirehberi/ai-polish-text/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>LLM Text Polisher v0.0.1 • Released under the MIT License • Built with open-source standards.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Interactive Sandbox JavaScript -->
+  <script>
+    const SAMPLE_TEXTS = {
+      casual: "I am writing this as test so how i am doing?",
+      business: "Hey, we need to talk about the delay in the project deliverables ASAP.",
+      grammar: "The team have completed their tasks, but their is several problems with it.",
+    };
+
+    const PRESET_RESPONSES = {
+      casual: {
+        "I am writing this as test so how i am doing?": "Hey! I'm just writing this as a quick test — how am I doing?",
+        default: "Hey! Just wanted to share this note — how's everything looking?",
+      },
+      business: {
+        "Hey, we need to talk about the delay in the project deliverables ASAP.": "Dear team, let us schedule a brief discussion regarding the project delivery timeline at your earliest convenience.",
+        default: "Please review the updated project schedule at your earliest convenience.",
+      },
+      grammar: {
+        "The team have completed their tasks, but their is several problems with it.": "The team has completed its tasks, but there are several problems with them.",
+        default: "The team has completed its work accurately and cleanly.",
+      },
+    };
+
+    function computeWordDiff(original, polished) {
+      const origWords = (original || '').split(/(\s+|[^\s\w]+|\w+)/).filter(Boolean);
+      const polWords = (polished || '').split(/(\s+|[^\s\w]+|\w+)/).filter(Boolean);
+
+      const m = origWords.length;
+      const n = polWords.length;
+      const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+          if (origWords[i] === polWords[j]) dp[i + 1][j + 1] = dp[i][j] + 1;
+          else dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+
+      let i = m, j = n;
+      const diff = [];
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && origWords[i - 1] === polWords[j - 1]) {
+          diff.unshift({ type: 'equal', text: origWords[i - 1] });
+          i--; j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+          diff.unshift({ type: 'insert', text: polWords[j - 1] });
+          j--;
+        } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+          diff.unshift({ type: 'delete', text: origWords[i - 1] });
+          i--;
+        }
+      }
+      return diff;
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    let currentOriginal = "I am writing this as test so how i am doing?";
+    let currentPolished = "Hey! I'm just writing this as a quick test — how am I doing?";
+    let currentView = 'diff';
+
+    const demoInput = document.getElementById('demo-input');
+    const demoTone = document.getElementById('demo-tone');
+    const demoPolishBtn = document.getElementById('demo-polish-btn');
+    const demoOutput = document.getElementById('demo-output');
+    const previewTonePill = document.getElementById('preview-tone-pill');
+    const demoCopyBtn = document.getElementById('demo-copy-btn');
+    const demoReplaceBtn = document.getElementById('demo-replace-btn');
+
+    function renderOutput() {
+      if (currentView === 'diff') {
+        const segments = computeWordDiff(currentOriginal, currentPolished);
+        const html = segments.map(seg => {
+          if (seg.type === 'insert') return `<ins class="diff-ins">${escapeHtml(seg.text)}</ins>`;
+          if (seg.type === 'delete') return `<del class="diff-del">${escapeHtml(seg.text)}</del>`;
+          return escapeHtml(seg.text);
+        }).join('');
+        demoOutput.innerHTML = html;
+      } else if (currentView === 'side') {
+        demoOutput.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+            <div><strong style="color: #94a3b8;">ORIGINAL:</strong><br/>${escapeHtml(currentOriginal)}</div>
+            <div><strong style="color: #94a3b8;">POLISHED:</strong><br/>${escapeHtml(currentPolished)}</div>
+          </div>
+        `;
+      } else {
+        demoOutput.innerHTML = escapeHtml(currentPolished);
+      }
+    }
+
+    function runDemoPolish() {
+      const text = demoInput.value.trim();
+      const tone = demoTone.value;
+      currentOriginal = text;
+      previewTonePill.textContent = demoTone.options[demoTone.selectedIndex].text.split(' / ')[0];
+
+      const toneDict = PRESET_RESPONSES[tone] || PRESET_RESPONSES.casual;
+      currentPolished = toneDict[text] || `[Polished in ${previewTonePill.textContent}]: ${text.charAt(0).toUpperCase() + text.slice(1)}`;
+      renderOutput();
+    }
+
+    demoPolishBtn.addEventListener('click', runDemoPolish);
+
+    document.querySelectorAll('.sample-prompts .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const sampleKey = chip.getAttribute('data-sample');
+        demoInput.value = SAMPLE_TEXTS[sampleKey] || '';
+        demoTone.value = sampleKey;
+        runDemoPolish();
+      });
+    });
+
+    document.querySelectorAll('.tabs-row .tab-item').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        document.querySelectorAll('.tabs-row .tab-item').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        currentView = e.target.getAttribute('data-view');
+        renderOutput();
+      });
+    });
+
+    demoCopyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(currentPolished).then(() => {
+        demoCopyBtn.textContent = '✓ Copied!';
+        setTimeout(() => { demoCopyBtn.textContent = '📋 Copy'; }, 2000);
+      });
+    });
+
+    demoReplaceBtn.addEventListener('click', () => {
+      demoInput.value = currentPolished;
+      demoReplaceBtn.textContent = '✓ Replaced!';
+      setTimeout(() => { demoReplaceBtn.textContent = '🔄 Replace in Document'; }, 2000);
+    });
+
+    // Initial render
+    renderOutput();
+  </script>
+</body>
+</html>

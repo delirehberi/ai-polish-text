@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Text Polisher - Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">✨</div>
+        <div class="brand-text">
+          <h1>LLM Text Polisher</h1>
+          <p>Configure your AI providers, models, and custom polishing prompts</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="test-connection-btn" class="btn btn-secondary">
+          <span class="icon">⚡</span> Test Connection
+        </button>
+        <button id="save-btn" class="btn btn-primary">
+          <span class="icon">💾</span> Save Changes
+        </button>
+      </div>
+    </header>
+
+    <div id="toast-banner" class="toast-banner hidden" role="alert"></div>
+
+    <main class="settings-grid">
+      <!-- Section 1: Provider & Credentials -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-icon">🔌</div>
+          <div>
+            <h2>API Provider & Model</h2>
+            <p class="subtitle">Choose which LLM service to use for text transformations</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="provider-select">LLM Provider</label>
+          <select id="provider-select" class="form-control">
+            <option value="openai">OpenAI (Official)</option>
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="ollama">Ollama (Local / Self-Hosted)</option>
+            <option value="custom">Custom OpenAI-Compatible (Groq, Together, vLLM, OpenRouter, LM Studio)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="api-key-group">
+          <label for="api-key-input">API Key</label>
+          <div class="input-with-action">
+            <input
+              type="password"
+              id="api-key-input"
+              class="form-control"
+              placeholder="sk-..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="button" id="toggle-key-visibility" class="btn-icon" title="Toggle visibility">
+              👁️
+            </button>
+          </div>
+          <p class="field-hint" id="api-key-hint">Keys are securely stored in your browser storage and never shared.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="base-url-input">Base API URL</label>
+          <input
+            type="url"
+            id="base-url-input"
+            class="form-control"
+            placeholder="https://api.openai.com/v1"
+            spellcheck="false"
+          />
+          <p class="field-hint" id="base-url-hint">Base endpoint for chat completions.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="model-input">Model Name</label>
+          <input
+            type="text"
+            id="model-input"
+            class="form-control"
+            placeholder="gpt-4o-mini"
+            spellcheck="false"
+          />
+          <div class="model-presets" id="model-presets">
+            <!-- Dynamic model chips inserted via JS -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-value">
+            <label for="temperature-input">Temperature</label>
+            <span id="temperature-val" class="badge">0.3</span>
+          </div>
+          <input
+            type="range"
+            id="temperature-input"
+            class="form-range"
+            min="0"
+            max="1"
+            step="0.05"
+            value="0.3"
+          />
+          <div class="range-labels">
+            <span>0.0 (Precise & Consistent)</span>
+            <span>1.0 (Creative)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Prompts & Instructions -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-icon">🧠</div>
+          <div>
+            <h2>Prompt Templates & Instructions</h2>
+            <p class="subtitle">Customize the system instructions sent to the model</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-action">
+            <label for="system-prompt-input">System Prompt</label>
+            <button type="button" id="reset-prompt-btn" class="btn-text">Reset to Default</button>
+          </div>
+          <textarea
+            id="system-prompt-input"
+            class="form-control code-font"
+            rows="6"
+            placeholder="Enter system instructions..."
+          ></textarea>
+          <p class="field-hint">Defines the overall persona and guardrails for the model.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="user-prompt-template">User Prompt Template</label>
+          <textarea
+            id="user-prompt-template"
+            class="form-control code-font"
+            rows="4"
+            placeholder="Template with placeholders..."
+          ></textarea>
+          <p class="field-hint">
+            Placeholders: <code>{{text}}</code> (selected text), <code>{{tone}}</code> (tone instruction), <code>{{instruction}}</code> (custom follow-up).
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="default-tone-select">Default Shortcut Tone (Alt+P)</label>
+          <select id="default-tone-select" class="form-control">
+            <option value="professional">Professional / Business</option>
+            <option value="casual">Casual / Friendly</option>
+            <option value="concise">Concise / Shorten</option>
+            <option value="academic">Academic / Formal</option>
+            <option value="grammar">Grammar & Clarity Fix Only</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Section 3: Tone Presets Management -->
+      <section class="card full-width">
+        <div class="card-header">
+          <div class="card-icon">🎭</div>
+          <div>
+            <h2>Tone & Style Presets</h2>
+            <p class="subtitle">Fine-tune the instructions for each context menu tone</p>
+          </div>
+        </div>
+
+        <div class="tones-table-wrapper">
+          <table class="tones-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Menu Label</th>
+                <th>Instruction Prompt Sent to LLM</th>
+              </tr>
+            </thead>
+            <tbody id="tones-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 4: Open Source & Support / Donate -->
+      <section class="card full-width support-card">
+        <div class="card-header">
+          <div class="card-icon">⚡</div>
+          <div>
+            <h2>Support & Open Source</h2>
+            <p class="subtitle">Free and open source software built by Emre Yılmaz (@delirehberi)</p>
+          </div>
+        </div>
+
+        <div class="support-grid">
+          <div class="support-item">
+            <span class="support-label">⚡ Bitcoin / Lightning (LNURL):</span>
+            <code class="support-value" id="lnurl-val">delirehberi@emre.xyz</code>
+          </div>
+          <div class="support-item">
+            <span class="support-label">🌐 Personal Website:</span>
+            <a href="https://emre.xyz" target="_blank" rel="noopener noreferrer" class="support-link">emre.xyz</a>
+          </div>
+          <div class="support-item">
+            <span class="support-label">🟣 Nostr:</span>
+            <a href="https://nostr.emre.xyz" target="_blank" rel="noopener noreferrer" class="support-link">nostr.emre.xyz</a>
+          </div>
+          <div class="support-item">
+            <span class="support-label">⭐ GitHub:</span>
+            <a href="https://github.com/delirehberi/ai-polish-text" target="_blank" rel="noopener noreferrer" class="support-link">github.com/delirehberi/ai-polish-text</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span>LLM Text Polisher v0.0.1</span>
+      <span>•</span>
+      <span>Cross-browser MV3 Extension</span>
+      <span>•</span>
+      <a href="https://github.com/delirehberi/ai-polish-text" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+    </footer>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

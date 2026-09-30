@@ -1,0 +1,35 @@
+{
+  "name": "ai-polish-text",
+  "version": "0.0.1",
+  "description": "Cross-browser Manifest V3 extension to polish, rephrase, tone-adjust, and fix selected text using any LLM provider.",
+  "main": "background.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "lint": "node -c background.js content.js options/options.js popup/popup.js scripts/*.js tests/*.js",
+    "build": "node icons/generate_icons.js && node scripts/build_dist.js",
+    "pack": "make pack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/delirehberi/ai-polish-text.git"
+  },
+  "keywords": [
+    "browser-extension",
+    "manifest-v3",
+    "llm",
+    "openai",
+    "anthropic",
+    "claude",
+    "ollama",
+    "groq",
+    "writing-assistant",
+    "grammar",
+    "tone-changer"
+  ],
+  "author": "Emre Yılmaz <delirehberi@emre.xyz> (https://emre.xyz)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/delirehberi/ai-polish-text/issues"
+  },
+  "homepage": "https://delirehberi.github.io/ai-polish-text/"
+}
