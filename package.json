@@ -1,6 +1,6 @@
 {
   "name": "ai-polish-text",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Cross-browser Manifest V3 extension to polish, rephrase, tone-adjust, and fix selected text using any LLM provider.",
   "main": "background.js",
   "scripts": {

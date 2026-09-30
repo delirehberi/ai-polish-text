@@ -1,7 +1,7 @@
 # LLM Text Polisher ✍️✨
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/delirehberi/ai-polish-text/releases)
+[![Version](https://img.shields.io/badge/version-0.0.2-blue.svg)](https://github.com/delirehberi/ai-polish-text/releases)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-success.svg)](https://delirehberi.github.io/ai-polish-text/)
 
 **LLM Text Polisher** is a cross-browser (Chrome & Firefox) Manifest V3 browser extension that allows you to select text anywhere on the web, right-click (or press `Alt+P`), and polish it using customizable LLM endpoints (OpenAI, Anthropic Claude, Ollama, Groq, Together AI, vLLM, LM Studio, etc.).
@@ -96,6 +96,12 @@ make test
 
 # Verify JavaScript syntax across all files
 make lint
+
+# Bump version and rebuild packages
+make version-patch   # e.g. 0.0.1 -> 0.0.2
+make version-minor   # e.g. 0.0.1 -> 0.1.0
+make version-major   # e.g. 0.0.1 -> 1.0.0
+make version v=1.2.0 # set explicit version
 ```
 
 ---

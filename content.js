@@ -13,6 +13,7 @@
   let activeHost = null;
   let activeShadowRoot = null;
   let activeSelectionContext = null;
+  let isReplacing = false;
 
   /**
    * Simple Word-Level Diff Algorithm (LCS-based)
@@ -176,13 +177,19 @@
       isNodeEditable(selection.focusNode) ||
       isNodeEditable(activeEl);
 
-    const editableContainer = getEditableRoot(container) || getEditableRoot(activeEl);
+    // If activeEl is a textarea/input even if range is inside it
+    let targetEl = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+    if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
+      targetEl = activeEl;
+    }
+
+    const editableContainer = getEditableRoot(targetEl) || getEditableRoot(activeEl);
 
     return {
       text: selectedText,
       isEditable,
       range: range.cloneRange(),
-      element: container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement,
+      element: targetEl,
       editableContainer,
       rect,
     };
@@ -198,6 +205,7 @@
     activeHost = null;
     activeShadowRoot = null;
     activeSelectionContext = null;
+    isReplacing = false;
   }
 
   /**
@@ -267,79 +275,48 @@
   }
 
   /**
-   * Perform replacement on target node
+   * Perform single-pass replacement on target node
    */
   function replaceSelectedText(ctx, newText) {
     if (!ctx || !ctx.isEditable || typeof document === 'undefined') return false;
 
-    // 1. Textarea and Form Inputs
-    if (ctx.element && (ctx.element.tagName === 'TEXTAREA' || ctx.element.tagName === 'INPUT')) {
-      const el = ctx.element;
-      el.focus();
+    // 1. Textarea and Form Inputs (Use standard W3C setRangeText)
+    const targetEl = ctx.element || ctx.editableContainer;
+    if (targetEl && (targetEl.tagName === 'TEXTAREA' || targetEl.tagName === 'INPUT')) {
+      targetEl.focus();
 
-      const start = typeof ctx.start === 'number' ? ctx.start : el.selectionStart;
-      const end = typeof ctx.end === 'number' ? ctx.end : el.selectionEnd;
+      const start = typeof ctx.start === 'number' ? ctx.start : targetEl.selectionStart;
+      const end = typeof ctx.end === 'number' ? ctx.end : targetEl.selectionEnd;
 
-      if (typeof start === 'number' && typeof end === 'number') {
-        el.setSelectionRange(start, end);
+      if (typeof targetEl.setRangeText === 'function' && typeof start === 'number' && typeof end === 'number') {
+        targetEl.setRangeText(newText, start, end, 'end');
+      } else {
+        const val = targetEl.value;
+        targetEl.value = val.substring(0, start) + newText + val.substring(end);
+        targetEl.setSelectionRange(start + newText.length, start + newText.length);
       }
 
-      let success = false;
-      try {
-        success = document.execCommand('insertText', false, newText);
-      } catch {}
-
-      if (!success) {
-        if (typeof el.setRangeText === 'function') {
-          el.setRangeText(newText, start, end, 'end');
-        } else {
-          const val = el.value;
-          el.value = val.substring(0, start) + newText + val.substring(end);
-          el.setSelectionRange(start + newText.length, start + newText.length);
-        }
-      }
-
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
+      // Single change notification event
+      targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+      targetEl.dispatchEvent(new Event('change', { bubbles: true }));
       return true;
     }
 
     // 2. Rich Text / ContentEditable (Twitter/X, DraftJS, Lexical, ProseMirror, Slate, etc.)
     if (ctx.range && typeof window !== 'undefined') {
-      const targetEl = ctx.editableContainer || ctx.element || document.activeElement;
-      if (targetEl && typeof targetEl.focus === 'function') {
-        targetEl.focus();
+      const containerEl = ctx.editableContainer || ctx.element || document.activeElement;
+      if (containerEl && typeof containerEl.focus === 'function') {
+        containerEl.focus();
       }
 
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(ctx.range);
 
-      // Dispatch standard InputEvent beforeinput for React/Lexical/DraftJS state tracking
-      try {
-        const beforeInputEvent = new InputEvent('beforeinput', {
-          bubbles: true,
-          cancelable: true,
-          inputType: 'insertText',
-          data: newText,
-        });
-        targetEl.dispatchEvent(beforeInputEvent);
-      } catch {}
-
       let success = false;
       try {
+        // execCommand('insertText') automatically triggers native beforeinput and input events in one pass
         success = document.execCommand('insertText', false, newText);
-      } catch {}
-
-      // Dispatch standard input event
-      try {
-        const inputEvent = new InputEvent('input', {
-          bubbles: true,
-          cancelable: false,
-          inputType: 'insertText',
-          data: newText,
-        });
-        targetEl.dispatchEvent(inputEvent);
       } catch {}
 
       if (!success) {
@@ -351,16 +328,42 @@
           ctx.range.setEndAfter(textNode);
           selection.removeAllRanges();
           selection.addRange(ctx.range);
+          if (containerEl) {
+            containerEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
           success = true;
         } catch (err) {
-          console.error('Manual DOM replacement failed:', err);
+          console.error('DOM replacement fallback error:', err);
         }
       }
 
-      return true;
+      return success;
     }
 
     return false;
+  }
+
+  /**
+   * Safe message dispatcher with extension invalidation detection
+   */
+  async function sendExtensionMessage(payload) {
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+      throw new Error('EXTENSION_CONTEXT_INVALIDATED');
+    }
+
+    try {
+      return await chrome.runtime.sendMessage(payload);
+    } catch (err) {
+      const msg = err?.message || '';
+      if (
+        msg.includes('Receiving end does not exist') ||
+        msg.includes('Extension context invalidated') ||
+        msg.includes('context invalidated')
+      ) {
+        throw new Error('EXTENSION_CONTEXT_INVALIDATED');
+      }
+      throw err;
+    }
   }
 
   /**
@@ -373,6 +376,7 @@
     originalText = '',
     polishedText = '',
     errorMessage = '',
+    isDisconnected = false,
     viewMode = 'diff', // 'diff' | 'side' | 'polished'
   }) {
     const shadow = activeShadowRoot;
@@ -478,19 +482,36 @@
         </div>
       `;
     } else if (state === 'error') {
-      body.innerHTML = `
-        <div class="error-box">
-          <div class="error-title">
-            <span>⚠️</span>
-            <span>Polishing Request Failed</span>
+      if (isDisconnected) {
+        body.innerHTML = `
+          <div class="error-box">
+            <div class="error-title">
+              <span>🔄</span>
+              <span>Extension Reconnection Required</span>
+            </div>
+            <div class="error-message">
+              The extension was updated or reloaded in the background. Please refresh this webpage to reconnect.
+            </div>
+            <div class="error-actions">
+              <button class="btn btn-primary btn-sm btn-refresh-page">🔄 Refresh Webpage</button>
+            </div>
           </div>
-          <div class="error-message">${escapeHtml(errorMessage)}</div>
-          <div class="error-actions">
-            <button class="btn btn-secondary btn-sm btn-open-settings">Open Settings</button>
-            <button class="btn btn-primary btn-sm btn-retry">Retry</button>
+        `;
+      } else {
+        body.innerHTML = `
+          <div class="error-box">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>Polishing Request Failed</span>
+            </div>
+            <div class="error-message">${escapeHtml(errorMessage)}</div>
+            <div class="error-actions">
+              <button class="btn btn-secondary btn-sm btn-open-settings">Open Settings</button>
+              <button class="btn btn-primary btn-sm btn-retry">Retry</button>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
     }
 
     card.appendChild(body);
@@ -561,6 +582,16 @@
     const dismissBtns = card.querySelectorAll('.btn-dismiss');
     dismissBtns.forEach((btn) => btn.addEventListener('click', removeCard));
 
+    // Refresh page button on disconnected extension
+    const refreshPageBtn = card.querySelector('.btn-refresh-page');
+    if (refreshPageBtn) {
+      refreshPageBtn.addEventListener('click', () => {
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      });
+    }
+
     // Mode tabs switch
     const tabBtns = card.querySelectorAll('.tab-btn');
     tabBtns.forEach((btn) => {
@@ -626,15 +657,20 @@
       });
     }
 
-    // Replace button
+    // Replace button (single execution guarded)
     const replaceBtn = card.querySelector('.btn-replace');
     if (replaceBtn) {
       replaceBtn.addEventListener('click', () => {
+        if (isReplacing) return;
+        isReplacing = true;
+
         const success = replaceSelectedText(activeSelectionContext, ctx.polishedText);
         if (success) {
           replaceBtn.textContent = '✓ Replaced!';
           replaceBtn.style.background = '#10b981';
-          setTimeout(removeCard, 500);
+          setTimeout(removeCard, 400);
+        } else {
+          isReplacing = false;
         }
       });
     }
@@ -662,8 +698,12 @@
     // Error actions
     const openSettingsBtn = card.querySelector('.btn-open-settings');
     if (openSettingsBtn) {
-      openSettingsBtn.addEventListener('click', () => {
-        chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' });
+      openSettingsBtn.addEventListener('click', async () => {
+        try {
+          await sendExtensionMessage({ type: 'OPEN_OPTIONS_PAGE' });
+        } catch {
+          window.location.reload();
+        }
       });
     }
 
@@ -723,7 +763,7 @@
     });
 
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendExtensionMessage({
         type: 'EXECUTE_POLISH',
         text: textToPolish,
         toneId,
@@ -750,11 +790,13 @@
         viewMode: 'diff',
       });
     } catch (err) {
+      const isContextInvalidated = err.message === 'EXTENSION_CONTEXT_INVALIDATED';
       renderCard({
         toneId,
         toneLabel: resolvedToneLabel,
         state: 'error',
         originalText: textToPolish,
+        isDisconnected: isContextInvalidated,
         errorMessage: err.message || 'Failed to send message to extension background worker.',
       });
     }
