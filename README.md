@@ -3,8 +3,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-0.0.2-blue.svg)](https://github.com/delirehberi/ai-polish-text/releases)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-success.svg)](https://delirehberi.github.io/ai-polish-text/)
+[![Firefox Add-on](https://img.shields.io/badge/Firefox-Add--on-FF7139.svg?logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/ai-text-polisher/)
 
 **LLM Text Polisher** is a cross-browser (Chrome & Firefox) Manifest V3 browser extension that allows you to select text anywhere on the web, right-click (or press `Alt+P`), and polish it using customizable LLM endpoints (OpenAI, Anthropic Claude, Ollama, Groq, Together AI, vLLM, LM Studio, etc.).
+
+🦊 **Get it for Firefox:** [addons.mozilla.org/firefox/addon/ai-text-polisher](https://addons.mozilla.org/en-US/firefox/addon/ai-text-polisher/)
 
 🌐 **Try the Live Interactive Demo:** [https://delirehberi.github.io/ai-polish-text/](https://delirehberi.github.io/ai-polish-text/)
 
@@ -57,9 +60,9 @@ Refine outputs dynamically with follow-up instructions (*"Make it shorter"*, *"A
 
 ## Installation & Setup
 
-### Install from Marketplaces *(Coming Soon)*
-- [Chrome Web Store](https://github.com/delirehberi/ai-polish-text/releases)
-- [Firefox Add-ons (AMO)](https://github.com/delirehberi/ai-polish-text/releases)
+### Install from Marketplaces
+- 🦊 **Firefox:** [Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/ai-text-polisher/) — approved by Mozilla ✅
+- 🌐 **Chrome:** Chrome Web Store *(coming soon — use [Manual Installation](#manual-installation-unpacked) in the meantime)*
 
 ---
 
@@ -74,6 +77,8 @@ Refine outputs dynamically with follow-up instructions (*"Make it shorter"*, *"A
 6. Open the extension Settings, configure your LLM provider & API key, and click **⚡ Test Connection**.
 
 #### For Mozilla Firefox
+> **Tip:** The easiest way is to install from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/ai-text-polisher/). The steps below load a temporary add-on for development/testing.
+
 1. Download `firefox.zip` from [Latest Releases](https://github.com/delirehberi/ai-polish-text/releases) or build locally with `make pack`.
 2. Open `about:debugging#/runtime/this-firefox` in Firefox.
 3. Click **Load Temporary Add-on…** and select `dist/firefox/manifest.json`.
